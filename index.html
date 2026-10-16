@@ -151,6 +151,32 @@
             color: #fbbf24;
         }
 
+        /* Chip dinámico de versión (se rellena desde el Service Worker) */
+        .app-version {
+            font-size: 0.75rem;
+            padding: 4px 10px;
+            border-radius: 9999px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            background-color: #e0e7ff;   /* indigo-100 */
+            color: #3730a3;              /* indigo-800 */
+        }
+        .dark .app-version {
+            background-color: #312e81;   /* indigo-900 */
+            color: #a5b4fc;              /* indigo-300 */
+        }
+        .app-version.app-version--updated {
+            animation: app-version-pulse 0.9s ease-out 1;
+        }
+        @keyframes app-version-pulse {
+            0%   { transform: scale(1);    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.45); }
+            40%  { transform: scale(1.08); box-shadow: 0 0 0 6px rgba(99, 102, 241, 0); }
+            100% { transform: scale(1);    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+        }
+
         .collapsible-section {
             transition: all 0.3s ease;
         }
@@ -230,7 +256,8 @@
             .app-modal-overlay,
             .app-modal,
             #authOverlay,
-            #appContainer {
+            #appContainer,
+            .app-version--updated {
                 animation: none;
                 transition: none;
             }
@@ -241,9 +268,10 @@
     <div class="max-w-7xl mx-auto">
         <!-- Header -->
         <div class="text-center mb-8 mobile-margin relative">
-            <h1 class="text-3xl md:text-4xl font-bold text-gray-800 dark:text-gray-100 mb-2 mobile-text">📋 Tablero Kanban</h1>
-            <p class="text-gray-600 dark:text-gray-400">Organiza tus tareas de manera eficiente</p>
-            <div id="firebaseStatusBar" class="mt-2 flex justify-center items-center gap-3">
+            <!-- Barra de estado: chips alineados a la DERECHA de la pantalla -->
+            <div id="firebaseStatusBar" class="flex justify-end items-center gap-3 flex-wrap mb-3">
+                <!-- Chip dinámico de versión: lo rellena el Service Worker vía postMessage -->
+                <span id="appVersion" class="app-version" title="Versión de la aplicación">v…</span>
                 <span id="firebaseStatus" class="firebase-status disconnected">⏳ Conectando a Firebase...</span>
                 <button id="darkModeToggle" type="button"
                         class="text-xs text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 px-2 py-1 rounded transition-colors"
@@ -251,6 +279,8 @@
                     🌙
                 </button>
             </div>
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800 dark:text-gray-100 mb-2 mobile-text">📋 Tablero Kanban</h1>
+            <p class="text-gray-600 dark:text-gray-400">Organiza tus tareas de manera eficiente</p>
         </div>
 
         <!-- Authentication Overlay (fullscreen, shown when NOT logged in) -->
@@ -540,5 +570,70 @@
          con type="module" (defer implícito), por lo que se ejecutan
          después de estos scripts. -->
     <script type="module" src="./js/main.js?v=30"></script>
+
+    <!-- Chip de versión dinámico: consulta su versión al Service Worker.
+         El SW responde { type: 'APP_VERSION', version, cache } y el chip se
+         actualiza solo. Se re-consulta en 'controllerchange', de modo que al
+         publicar una nueva versión del SW (p. ej. kanban-pwa-v33) el chip
+         se refresca sin recargar la página. -->
+    <script type="module">
+        (function initVersionChip() {
+            const versionChip = document.getElementById('appVersion');
+            if (!versionChip) return;
+
+            function renderVersion(version, cacheName) {
+                versionChip.textContent = version;
+                versionChip.title = cacheName
+                    ? 'Versión de la aplicación (' + cacheName + ')'
+                    : 'Versión de la aplicación';
+                // Reinicia la animación de "versión actualizada"
+                versionChip.classList.remove('app-version--updated');
+                void versionChip.offsetWidth;
+                versionChip.classList.add('app-version--updated');
+            }
+
+            function markUnavailable(reason) {
+                versionChip.textContent = 'v—';
+                versionChip.title = reason;
+            }
+
+            if (!('serviceWorker' in navigator)) {
+                markUnavailable('Service Worker no disponible en este navegador');
+                return;
+            }
+
+            function askVersion(worker) {
+                if (!worker) return;
+                try {
+                    worker.postMessage({ type: 'GET_VERSION' });
+                } catch (err) {
+                    /* El SW aún no está listo; se reintentará en controllerchange */
+                }
+            }
+
+            navigator.serviceWorker.addEventListener('message', function(event) {
+                const data = event.data;
+                if (data && data.type === 'APP_VERSION' && data.version) {
+                    renderVersion(data.version, data.cache);
+                }
+            });
+
+            navigator.serviceWorker.addEventListener('controllerchange', function() {
+                askVersion(navigator.serviceWorker.controller);
+            });
+
+            if (navigator.serviceWorker.controller) {
+                // El SW ya controla esta página: preguntar directamente.
+                askVersion(navigator.serviceWorker.controller);
+            } else {
+                // Primera visita: esperar a que el SW se registre y active.
+                navigator.serviceWorker.ready
+                    .then(function(reg) { askVersion(reg.active); })
+                    .catch(function() {
+                        markUnavailable('No se pudo obtener la versión del Service Worker');
+                    });
+            }
+        })();
+    </script>
 </body>
 </html>
