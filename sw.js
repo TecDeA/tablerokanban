@@ -1,11 +1,16 @@
-const CACHE_NAME = 'kanban-pwa-v2.32';
+const CACHE_NAME = 'kanban-pwa-2.32';
 
-// Versión de la app, derivada del nombre de la caché (p. ej. "v32").
+// Versión de la app: es el texto que sigue al prefijo de la caché
+// ("kanban-pwa-"), p. ej. "2.32" con el esquema actual (major.minor) o
+// "v32" con el esquema antiguo; se muestra tal cual en el chip.
 // Se expone a las páginas a través del protocolo de mensajes GET_VERSION
 // (ver listener 'message' al final de este archivo).
 const APP_VERSION = (function () {
-  const raw = CACHE_NAME.split('-').pop() || CACHE_NAME;
-  return raw.charAt(0) === 'v' ? raw : 'v' + raw;
+  const prefix = 'kanban-pwa-';
+  if (CACHE_NAME.startsWith(prefix)) {
+    return CACHE_NAME.slice(prefix.length) || CACHE_NAME;
+  }
+  return CACHE_NAME;
 })();
 
 const urlsToCache = [
