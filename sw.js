@@ -1,4 +1,4 @@
-const CACHE_NAME = 'kanban-pwa-2.32';
+const CACHE_NAME = 'kanban-pwa-2.33';
 
 // Versión de la app: es el texto que sigue al prefijo de la caché
 // ("kanban-pwa-"), p. ej. "2.32" con el esquema actual (major.minor) o
