@@ -1,4 +1,13 @@
-const CACHE_NAME = 'kanban-pwa-v32';
+const CACHE_NAME = 'kanban-pwa-v2.32';
+
+// Versión de la app, derivada del nombre de la caché (p. ej. "v32").
+// Se expone a las páginas a través del protocolo de mensajes GET_VERSION
+// (ver listener 'message' al final de este archivo).
+const APP_VERSION = (function () {
+  const raw = CACHE_NAME.split('-').pop() || CACHE_NAME;
+  return raw.charAt(0) === 'v' ? raw : 'v' + raw;
+})();
+
 const urlsToCache = [
   './',
   './index.html',
@@ -91,4 +100,21 @@ self.addEventListener('fetch', function(event) {
         return caches.match(event.request);
       })
   );
+});
+
+// Message event - protocolo de consulta de versión.
+// index.html pregunta con { type: 'GET_VERSION' } y este SW responde al
+// cliente que la solicitó (event.source) con { type: 'APP_VERSION', ... }
+// para que el chip de versión de la interfaz se actualice dinámicamente.
+self.addEventListener('message', function(event) {
+  if (!event.data || event.data.type !== 'GET_VERSION') {
+    return;
+  }
+  if (event.source) {
+    event.source.postMessage({
+      type: 'APP_VERSION',
+      version: APP_VERSION,
+      cache: CACHE_NAME
+    });
+  }
 });
