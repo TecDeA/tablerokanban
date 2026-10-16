@@ -271,7 +271,7 @@
             <!-- Barra de estado: chips alineados a la DERECHA de la pantalla -->
             <div id="firebaseStatusBar" class="flex justify-end items-center gap-3 flex-wrap mb-3">
                 <!-- Chip dinámico de versión: lo rellena el Service Worker vía postMessage -->
-                <span id="appVersion" class="app-version" title="Versión de la aplicación">…</span>
+                <span id="appVersion" class="app-version" title="Versión de la aplicación">v…</span>
                 <span id="firebaseStatus" class="firebase-status disconnected">⏳ Conectando a Firebase...</span>
                 <button id="darkModeToggle" type="button"
                         class="text-xs text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 px-2 py-1 rounded transition-colors"
@@ -575,16 +575,22 @@
          El SW responde { type: 'APP_VERSION', version, cache } y el chip se
          actualiza solo. Se re-consulta en 'controllerchange', de modo que al
          publicar una nueva versión del SW (p. ej. kanban-pwa-2.33) el chip
-         se refresca sin recargar la página. La versión se muestra tal cual
-         se define en CACHE_NAME del SW (esquema actual: major.minor, p. ej.
-         "2.32"; también admite el esquema antiguo "v32"). -->
+         se refresca sin recargar la página. La versión se define en
+         CACHE_NAME del SW (esquema actual: major.minor, p. ej. "2.32";
+         también admite el esquema antiguo "v32") y el chip la pinta siempre
+         con una "v" delante (p. ej. "v2.32"), sin duplicarla si ya viene. -->
     <script type="module">
         (function initVersionChip() {
             const versionChip = document.getElementById('appVersion');
             if (!versionChip) return;
 
             function renderVersion(version, cacheName) {
-                versionChip.textContent = version;
+                // El chip muestra siempre una "v" de versión delante
+                // (p. ej. "v2.32"). Si el SW ya la incluye (esquema antiguo
+                // "v32"), se respeta y no se duplica.
+                versionChip.textContent = /^[vV]/.test(version)
+                    ? version
+                    : 'v' + version;
                 versionChip.title = cacheName
                     ? 'Versión de la aplicación (' + cacheName + ')'
                     : 'Versión de la aplicación';
@@ -595,7 +601,7 @@
             }
 
             function markUnavailable(reason) {
-                versionChip.textContent = '—';
+                versionChip.textContent = 'v—';
                 versionChip.title = reason;
             }
 
