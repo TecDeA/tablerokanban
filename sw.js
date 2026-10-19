@@ -1,4 +1,4 @@
-const CACHE_NAME = 'kanban-pwa-2.33';
+const CACHE_NAME = 'kanban-pwa-2.34';
 
 // Versión de la app: es el texto que sigue al prefijo de la caché
 // ("kanban-pwa-"), p. ej. "2.32" con el esquema actual (major.minor) o
@@ -57,7 +57,9 @@ self.addEventListener('activate', function(event) {
     caches.keys().then(function(cacheNames) {
       return Promise.all(
         cacheNames.map(function(cacheName) {
-          if (cacheName !== CACHE_NAME) {
+          // Filtrar por prefijo propio: caches.keys() es global al origen y
+          // sin este filtro se borraban las cachés del portal y demás apps.
+          if (cacheName.startsWith('kanban-pwa-') && cacheName !== CACHE_NAME) {
             console.log('Eliminando cache antigua:', cacheName);
             return caches.delete(cacheName);
           }
